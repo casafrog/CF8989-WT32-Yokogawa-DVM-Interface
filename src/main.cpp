@@ -1,6 +1,6 @@
 // Yokogawa DVM MQTT client bridge driver
 // Copyright © 2025 Ted Hyde, CasaFrog Pro Resources LLC  www.casafrog.com
-// 12 November 2025 v2.0
+// 16 November 2025 v2_0_1
 //
 // This application creates a semi-intelligent serial to MQTT bridge to receive RS232/GPIB-style commands over an MQTT channel
 // for device control and will return the current status and display response.
@@ -32,6 +32,8 @@
 #include <PubSubClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+
+#define CONFIG_INPUT 4  // manual config clearing request, IO2
 
 // System Defaults
 String mqttServer = "0.0.0.0";
@@ -261,47 +263,55 @@ void processConfig()
   Serial.println(configIncoming);
   DeserializationError error = deserializeJson(configJson, configIncoming);
  
-  String temp_mqttServer = configJson["server"];
-  String temp_ID = configJson["ID"];
-  unsigned long temp_mqtt_publish_interval = configJson["mqtt_publish_interval"];
+  if (configJson["server"].is<JsonVariant>() && configJson["ID"].is<JsonVariant>() && configJson["mqtt_publish_interval"].is<JsonVariant>())
+  {
 
-  // Store the updated config parameters to nvram using Preferences functions.
-  preferences.begin("mqtt-app", false);
-  preferences.clear();
-  preferences.putString("default", "no");
-  preferences.putString("server", temp_mqttServer);
-  preferences.putString("id", temp_ID);
-  preferences.putULong("autosend", temp_mqtt_publish_interval);
-       
-  mqttServer = preferences.getString("server", "null");  
-  ID = preferences.getString("id", "null");  
-  mqtt_publish_interval = preferences.getULong("autosend", 0);
-  updateInterval = mqtt_publish_interval;
+    String temp_mqttServer = configJson["server"];
+    String temp_ID = configJson["ID"];
+    unsigned long temp_mqtt_publish_interval = configJson["mqtt_publish_interval"];
 
-  Serial.print("Prefs: Server:");
-  Serial.println(mqttServer);
-  Serial.print("Prefs: ID:");
-  Serial.println(ID);
-  Serial.print("Prefs: MQTT Publish Interval:");
-  Serial.println(mqtt_publish_interval);
+    // Store the updated config parameters to nvram using Preferences functions.
+    preferences.begin("mqtt-app", false);
+    preferences.clear();
+    preferences.putString("default", "no");
+    preferences.putString("server", temp_mqttServer);
+    preferences.putString("id", temp_ID);
+    preferences.putULong("autosend", temp_mqtt_publish_interval);
+        
+    mqttServer = preferences.getString("server", "null");  
+    ID = preferences.getString("id", "null");  
+    mqtt_publish_interval = preferences.getULong("autosend", 0);
+    updateInterval = mqtt_publish_interval;
 
-  preferences.end();
+    Serial.print("Prefs: Server:");
+    Serial.println(mqttServer);
+    Serial.print("Prefs: ID:");
+    Serial.println(ID);
+    Serial.print("Prefs: MQTT Publish Interval:");
+    Serial.println(mqtt_publish_interval);
 
-  // Rebuild topic strings with the (updated) device ID
-  cmdTopic     = "lab/machines/"+ID+"/CMD";
-  configTopic     = "lab/machines/"+ID+"/CONFIG";
-  datarawTopic  = "lab/machines/"+ID+"/DATA/raw";
-  datavalueTopic  = "lab/machines/"+ID+"/DATA/value";
-  datamodeTopic  = "lab/machines/"+ID+"/DATA/mode";
-  stateIDTopic  = "lab/machines/"+ID+"/STATE/id";
-  stateIPAddrTopic  = "lab/machines/"+ID+"/STATE/IPAddr";
-  statestatusTopic  = "lab/machines/"+ID+"/STATE/status";
-  stateconfigTopic  = "lab/machines/"+ID+"/STATE/config";
+    preferences.end();
 
-  configIncoming = "";
-  // Force a disconnect and reconnect using (updated) config info
-  client.disconnect();
-  reconnect();
+    // Rebuild topic strings with the (updated) device ID
+    cmdTopic     = "lab/machines/"+ID+"/CMD";
+    configTopic     = "lab/machines/"+ID+"/CONFIG";
+    datarawTopic  = "lab/machines/"+ID+"/DATA/raw";
+    datavalueTopic  = "lab/machines/"+ID+"/DATA/value";
+    datamodeTopic  = "lab/machines/"+ID+"/DATA/mode";
+    stateIDTopic  = "lab/machines/"+ID+"/STATE/id";
+    stateIPAddrTopic  = "lab/machines/"+ID+"/STATE/IPAddr";
+    statestatusTopic  = "lab/machines/"+ID+"/STATE/status";
+    stateconfigTopic  = "lab/machines/"+ID+"/STATE/config";
+
+    configIncoming = "";
+    // Force a disconnect and reconnect using (updated) config info
+    client.disconnect();
+    reconnect();
+  }
+  else
+  {
+    Serial.println("New Config Invalid - No Changes Made.");
+  }
 
 }
 
@@ -312,6 +322,13 @@ void setup()
   Serial.println("\nStartup...");
 
   preferences.begin("mqtt-app", false);
+  if(digitalRead(CONFIG_INPUT))
+  {
+    // external config reset request (IO2 by default) - clear preferences.
+    preferences.clear();
+    Serial.println("Preferences Cleared.");
+  }
+
   String prefDefault = preferences.getString("default", "default");  
   if(prefDefault == "default")
   {
@@ -319,7 +336,7 @@ void setup()
     preferences.clear();
     preferences.putString("default", "no");
     preferences.putString("server", "mqtt-s1.casafrog.com");
-    preferences.putString("id", "unconfigured");
+    preferences.putString("id", "orphan");
     preferences.putULong("autosend", 5000);
     
 
