@@ -15,7 +15,6 @@ Permits flash storage of MQTT server name (after default connect), unique device
 Prior to compilation, a base mqtt server address must be set (look for mqtt-s1.casafrog.com in the code around line 321 and change to your own server name or IP). Alternatively, you can spoof the ip address of your mqtt server with a temporary dns entry in your local dns server to have mqtt-s1.casafrog.com point to your server. Of course, you should not keep it this way, it is a temporary capability to permit updating the server name via mqtt later.
 
 Default ID can also be set statically in code, or can be updated via MQTT afterwards.
-(0 for off, 1-50000 for cycles of time) and device id.
 
 Upon first-run, mqtt communication will sed "STATE" topic data, including lab/machines/orphan/STATE/IPAddr which you can use to ensure the device is the one you are looking for. Note that there is no embedded web server on this appliance, so there is no need to know what the ip of the appliance is. This is just a diagnostic item.
 
