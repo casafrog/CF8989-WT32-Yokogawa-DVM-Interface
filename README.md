@@ -23,7 +23,9 @@ Using your own device id, publish a json blob of the following format:
 >config={"server":"< your mqtt server >", "ID":"< your machine id >","mqtt_publish_interval": < publish time >}
 
 < your mqtt server > is a DNS name or ip address as a string,
+
 < your machine id > is a unique-to-your-network arbitrary name for your device as a string
+
 < publish time > is a 32 bit unsigned integer. 0 will disable auto-send capability, where 1 or greater will provide a cycle countdown timer for auto update sending. 5000 is about 0.5 sec on most ESP32's. The value represents approximate clock cycles within the main loop section but is not intended to be accurate.
 
 Additional library attribution in **LICENCES** folder.
